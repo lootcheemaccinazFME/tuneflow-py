@@ -143,7 +143,7 @@ public class MainActivity extends Activity {
         TextView count = text(tracks.size() + " tracks", 13, MUTED, true);
         row.addView(count, new LinearLayout.LayoutParams(0, -2, 1));
         Button add = button("+  Add MIDI track");
-        row.addView(add, params(-2, dp(42)));
+        row.addView(add, params(-2, 42));
         add.setOnClickListener(view -> {
             int number = tracks.size() + 1;
             TrackModel track = new TrackModel("New track " + number, "MIDI", "MIDI clip", 0, 4,
@@ -181,7 +181,7 @@ public class MainActivity extends Activity {
 
         Button mute = button(track.muted ? "MUTED" : "MUTE");
         mute.setTextSize(10);
-        header.addView(mute, params(-2, dp(36)));
+        header.addView(mute, params(-2, 36));
         mute.setOnClickListener(view -> {
             track.muted = !track.muted;
             render();
@@ -192,7 +192,7 @@ public class MainActivity extends Activity {
         });
 
         TimelineView timeline = new TimelineView(track);
-        LinearLayout.LayoutParams timelineParams = params(-1, dp(42));
+        LinearLayout.LayoutParams timelineParams = params(-1, 42);
         timelineParams.topMargin = dp(13);
         card.addView(timeline, timelineParams);
         timeline.setOnClickListener(view -> {
@@ -227,23 +227,23 @@ public class MainActivity extends Activity {
 
         if (selectedTrack.clip.isMidi) {
             PianoRollView pianoRoll = new PianoRollView(selectedTrack.clip.notes);
-            LinearLayout.LayoutParams rollParams = params(-1, dp(190));
+            LinearLayout.LayoutParams rollParams = params(-1, 190);
             rollParams.topMargin = dp(16);
             card.addView(pianoRoll, rollParams);
             Button addNote = button("+  Add MIDI note");
-            LinearLayout.LayoutParams buttonParams = params(-1, dp(44));
+            LinearLayout.LayoutParams buttonParams = params(-1, 44);
             buttonParams.topMargin = dp(12);
             card.addView(addNote, buttonParams);
             addNote.setOnClickListener(view -> {
                 int step = selectedTrack.clip.notes.size() % 16;
-                int pitch = 60 + (selectedTrack.clip.notes.size() % 12);
+                int pitch = midiEditorBasePitch() + (selectedTrack.clip.notes.size() % 12);
                 selectedTrack.clip.notes.add(new MidiNote(pitch, step, 2));
                 render();
             });
         } else {
             TextView audioInfo = text("Audio clip  ·  Bar " + (selectedTrack.clip.startBar + 1)
                     + "  ·  " + selectedTrack.clip.barLength + " bars", 14, MUTED, false);
-            LinearLayout.LayoutParams audioParams = params(-1, dp(94));
+            LinearLayout.LayoutParams audioParams = params(-1, 94);
             audioParams.topMargin = dp(16);
             audioInfo.setGravity(Gravity.CENTER);
             audioInfo.setBackground(background(SURFACE_LIGHT, SURFACE_LIGHT, 10));
@@ -301,6 +301,17 @@ public class MainActivity extends Activity {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    private int midiEditorBasePitch() {
+        int lowestPitch = 60;
+        if (!selectedTrack.clip.notes.isEmpty()) {
+            lowestPitch = 127;
+            for (MidiNote note : selectedTrack.clip.notes) {
+                lowestPitch = Math.min(lowestPitch, note.pitch);
+            }
+        }
+        return Math.min(115, lowestPitch / 12 * 12);
+    }
+
     private class TimelineView extends View {
         private final TrackModel track;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -342,12 +353,21 @@ public class MainActivity extends Activity {
     private class PianoRollView extends View {
         private final ArrayList<MidiNote> notes;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final String[] pitchLabels = {"C5", "B4", "A#4", "A4", "G#4", "G4",
-                "F#4", "F4", "E4", "D#4", "D4", "C#4"};
+        private final int basePitch;
+        private final String[] pitchNames = {"C", "C#", "D", "D#", "E", "F",
+                "F#", "G", "G#", "A", "A#", "B"};
 
         PianoRollView(ArrayList<MidiNote> notes) {
             super(MainActivity.this);
             this.notes = notes;
+            int lowestPitch = 60;
+            if (!notes.isEmpty()) {
+                lowestPitch = 127;
+                for (MidiNote note : notes) {
+                    lowestPitch = Math.min(lowestPitch, note.pitch);
+                }
+            }
+            basePitch = Math.min(115, lowestPitch / 12 * 12);
             setBackground(background(SURFACE_LIGHT, SURFACE_LIGHT, 10));
         }
 
@@ -363,12 +383,14 @@ public class MainActivity extends Activity {
             paint.setColor(MUTED);
             for (int row = 0; row < 12; row++) {
                 float y = top + row * rowHeight;
+                int pitch = basePitch + 11 - row;
                 if (row == 0 || row == 4 || row == 7) {
                     paint.setColor(Color.rgb(45, 49, 61));
                     canvas.drawRect(labelWidth, y, getWidth(), y + rowHeight, paint);
                     paint.setColor(MUTED);
                 }
-                canvas.drawText(pitchLabels[row], dp(5), y + rowHeight * 0.72f, paint);
+                String pitchLabel = pitchNames[pitch % 12] + (pitch / 12 - 1);
+                canvas.drawText(pitchLabel, dp(5), y + rowHeight * 0.72f, paint);
                 paint.setColor(row % 12 == 0 ? Color.rgb(81, 86, 101) : Color.rgb(54, 59, 71));
                 canvas.drawLine(labelWidth, y, getWidth(), y, paint);
                 paint.setColor(MUTED);
@@ -379,10 +401,10 @@ public class MainActivity extends Activity {
                 canvas.drawLine(x, top, x, getHeight() - top, paint);
             }
             for (MidiNote note : notes) {
-                if (note.pitch < 60 || note.pitch > 71) {
+                if (note.pitch < basePitch || note.pitch > basePitch + 11) {
                     continue;
                 }
-                int row = 71 - note.pitch;
+                int row = basePitch + 11 - note.pitch;
                 float left = labelWidth + note.startStep * stepWidth + dp(1);
                 float right = left + Math.max(dp(8), note.duration * stepWidth - dp(2));
                 float noteTop = top + row * rowHeight + dp(2);

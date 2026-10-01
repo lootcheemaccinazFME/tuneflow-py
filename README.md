@@ -43,6 +43,12 @@ Below is an illustration of the plugin execution flow:
 
 Visit [https://help.tuneflow.com/en/developer](https://help.tuneflow.com/en/developer) for developer documentation.
 
+## Android demo
+
+The `android-app` directory contains a small native Android demo of TuneFlow song concepts: song settings, MIDI and audio tracks, clips arranged on a timeline, and a piano roll with sample notes. You can add MIDI tracks and notes or mute tracks in the demo.
+
+This is a standalone sample app, not an Android port of the Python SDK or a full DAW. To build a debug APK, run `gradle :app:assembleDebug` from `android-app`. GitHub Actions also builds the APK when Android app files change and uploads it as the `TuneFlow-Android-APK` workflow artifact.
+
 ## Examples
 
 ### ⌨️ AudioLDM
